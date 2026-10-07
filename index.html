@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pendataan Penjualan Obat UKS</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f2f6f7; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        h1, h2, h3 { text-align: center; color: #c62828; margin-top: 0; }
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        input[type="text"], input[type="password"], input[type="number"], textarea, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 8px; border: 1px solid #ccc; }
+        button { background: #c62828; color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #8e0000; }
+        .btn-export { background: #2e7d32; }
+        .btn-tambah-obat { background: #0288d1; margin-top: 10px; }
+        .obat-container { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin-top: 6px; max-height: 250px; overflow-y: auto; background: #fafafa; }
+        .obat-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+        .obat-item input[type="number"] { width: 70px; padding: 5px; }
+        textarea { resize: vertical; height: 80px; background-color: #f0f0f0; font-family: inherit; }
+        table { width: 100%; border-collapse: collapse; margin-top: 25px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #c62828; color: white; }
+        .total { margin-top: 20px; font-size: 18px; font-weight: bold; text-align: right; }
+        .hapus { background: #555; }
+        .logout-btn { background: #333; width: auto; float: right; padding: 6px 15px; margin-top: 0; }
+        .hidden { display: none !important; }
+        .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .rincian-text { white-space: pre-wrap; text-align: left; font-size: 13px; }
+        .form-tambah-obat { background: #f9f9f9; border: 1px dashed #0288d1; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .form-row { display: flex; gap: 10px; }
+        .form-row div { flex: 1; }
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        .action-buttons button { flex: 1; }
+    </style>
+</head>
+<body>
+
+<!-- HALAMAN LOGIN -->
+<div class="container" id="halamanLogin">
+    <h2>🔐 Login Pendataan UKS</h2>
+    <form onsubmit="prosesLogin(event)">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Username (admin)" required autocomplete="off">
+
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Password (12345)" required>
+
+        <button type="submit">Masuk Aplikasi</button>
+    </form>
+</div>
+
+<!-- HALAMAN UTAMA -->
+<div class="container hidden" id="halamanUtama">
+    <div class="header-app">
+        <h1>🏥 UKS App</h1>
+        <button type="button" class="logout-btn" onclick="logout()">Keluar</button>
+    </div>
+
+    <div class="form-tambah-obat">
+        <h3 style="margin-bottom: 10px; color: #0288d1;">➕ Tambah Obat Baru ke Master Data</h3>
+        <div class="form-row">
+            <div>
+                <label style="margin-top:0;">Nama Obat</label>
+                <input type="text" id="namaObatBaru" placeholder="Contoh: PARACETAMOL">
+            </div>
+            <div>
+                <label style="margin-top:0;">Harga Satuan (Rp)</label>
+                <input type="number" id="hargaObatBaru" placeholder="Contoh: 1500" min="0">
+            </div>
+        </div>
+        <button type="button" class="btn-tambah-obat" onclick="tambahObatBaru()">Simpan Obat Baru</button>
+    </div>
+
+    <hr style="margin-top: 25px; border: 0; border-top: 1px solid #ccc;">
+
+    <label for="nama">Nama Pembeli</label>
+    <input type="text" id="nama" placeholder="Masukkan nama pembeli">
+
+    <label for="kelas">Kelas</label>
+    <input type="text" id="kelas" placeholder="Contoh: XI TKJ 1">
+
+    <label>Pilih Obat (Bisa Pilih Lebih Dari 1)</label>
+    <div class="obat-container" id="daftarObatContainer"></div>
+
+    <label for="harga">Rincian & Total Harga Otomatis</label>
+    <textarea id="harga" readonly placeholder="Rincian harga akan muncul di sini secara otomatis..."></textarea>
+
+    <button type="button" onclick="tambahData()">Tambah Data Penjualan</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Tanggal</th>
+                <th>Pembeli</th>
+                <th>Kelas</th>
+                <th>Obat & Jumlah</th>
+                <th>Rincian Harga</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody id="tabelData"></tbody>
+    </table>
+
+    <div class="total">
+        Total Semua Penjualan: <span id="totalSemua">Rp0</span>
+    </div>
+
+    <div class="action-buttons">
+        <button type="button" class="btn-export" onclick="eksporPNG()">🖼️ Simpan ke Gambar (.PNG)</button>
+        <button type="button" class="hapus" onclick="hapusData()">🗑️ Hapus Semua Data</button>
+    </div>
+</div>
+
+<script>
+    const DEFAULT_LIST_OBAT = [
+        { nama: "FEMINAX", harga: 1000 },
+        { nama: "MIXAGRIP", harga: 1000 },
+        { nama: "PROMAG", harga: 1000 },
+        { nama: "BODREX", harga: 750 },
+        { nama: "HANDSAPLAS", harga: 500 },
+        { nama: "SOFTEX", harga: 2000 },
+        { nama: "RHEUMACYL", harga: 750 },
+        { nama: "SALONPLASS", harga: 1000 },
+        { nama: "TOLAK ANGIN", harga: 4000 }
+    ];
+
+    let LIST_OBAT = [];
+    let dataPenjualan = [];
+
+    // Inisialisasi Aman
+    window.addEventListener("DOMContentLoaded", function() {
+        try {
+            LIST_OBAT = JSON.parse(localStorage.getItem("masterObatUKS")) || DEFAULT_LIST_OBAT;
+            dataPenjualan = JSON.parse(localStorage.getItem("dataPenjualanUKS")) || [];
+        } catch(e) {
+            LIST_OBAT = DEFAULT_LIST_OBAT;
+            dataPenjualan = [];
+        }
+
+        if (sessionStorage.getItem("isLoggedInUKS") === "true") {
+            bukaHalamanUtama();
+        }
+    });
+
+    function prosesLogin(e) {
+        if(e) e.preventDefault(); // Hentikan reload bawaan form
+        
+        let u = document.getElementById("username").value.trim();
+        let p = document.getElementById("password").value.trim();
+
+        if (u === "admin" && p === "12345") {
+            try {
+                sessionStorage.setItem("isLoggedInUKS", "true");
+            } catch(e) {}
+            bukaHalamanUtama();
+        } else {
+            alert("Username atau password salah!\nUsername: admin\nPassword: 12345");
+        }
+        return false;
+    }
+
+    function logout() {
+        try { sessionStorage.removeItem("isLoggedInUKS"); } catch(e) {}
+        document.getElementById("halamanUtama").classList.add("hidden");
+        document.getElementById("halamanLogin").classList.remove("hidden");
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+    }
+
+    function bukaHalamanUtama() {
+        document.getElementById("halamanLogin").classList.add("hidden");
+        document.getElementById("halamanUtama").classList.remove("hidden");
+        generateDaftarObat();
+        tampilkanData();
+    }
+
+    function tambahObatBaru() {
+        let namaInput = document.getElementById("namaObatBaru").value.trim().toUpperCase();
+        let hargaInput = parseInt(document.getElementById("hargaObatBaru").value);
+
+        if (namaInput === "" || isNaN(hargaInput) || hargaInput <= 0) {
+            alert("Silakan masukkan Nama Obat dan Harga Satuan yang valid!");
+            return;
+        }
+
+        if (LIST_OBAT.some(o => o.nama === namaInput)) {
+            alert("Obat dengan nama tersebut sudah ada!");
+            return;
+        }
+
+        LIST_OBAT.push({ nama: namaInput, harga: hargaInput });
+        try { localStorage.setItem("masterObatUKS", JSON.stringify(LIST_OBAT)); } catch(e) {}
+
+        document.getElementById("namaObatBaru").value = "";
+        document.getElementById("hargaObatBaru").value = "";
+
+        generateDaftarObat();
+        alert(`Obat "${namaInput}" berhasil ditambahkan!`);
+    }
+
+    function generateDaftarObat() {
+        let container = document.getElementById("daftarObatContainer");
+        container.innerHTML = "";
+
+        LIST_OBAT.forEach((item, index) => {
+            let html = `
+                <div class="obat-item">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="chk_${index}" value="${item.nama}" onchange="toggleObat(${index})">
+                        <label for="chk_${index}" style="margin:0; cursor:pointer;">${item.nama} (Rp${item.harga.toLocaleString('id-ID')})</label>
+                    </div>
+                    <div>
+                        <input type="number" id="qty_${index}" min="1" value="1" disabled oninput="kalkulasiHarga()" onchange="kalkulasiHarga()">
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+    }
+
+    function toggleObat(index) {
+        let chk = document.getElementById(`chk_${index}`);
+        let qtyInput = document.getElementById(`qty_${index}`);
+        qtyInput.disabled = !chk.checked;
+        if (!chk.checked) qtyInput.value = 1;
+        kalkulasiHarga();
+    }
+
+    function formatRupiah(angka) {
+        return "Rp" + angka.toLocaleString("id-ID");
+    }
+
+    function hitungDetailObat(nama, jumlah) {
+        let rincianItem = "";
+        let totalSub = 0;
+
+        if (nama === "FEMINAX" || nama === "MIXAGRIP") {
+            let paket4 = Math.floor(jumlah / 4);
+            let sisa = jumlah % 4;
+            totalSub = (paket4 * 3000) + (sisa * 1000);
+            let arrTeks = Array(jumlah).fill("1000");
+            rincianItem = arrTeks.join(" + ") + " = " + formatRupiah(totalSub);
+        } else if (nama === "BODREX" || nama === "RHEUMACYL") {
+            let paket2 = Math.floor(jumlah / 2);
+            let sisa = jumlah % 2;
+            totalSub = (paket2 * 1500) + (sisa * 750);
+            let arrTeks = Array(jumlah).fill("750");
+            rincianItem = arrTeks.join(" + ") + " = " + formatRupiah(totalSub);
+        } else {
+            let item = LIST_OBAT.find(o => o.nama === nama);
+            let hargaSatuan = item ? item.harga : 0;
+            totalSub = jumlah * hargaSatuan;
+            let arrTeks = Array(jumlah).fill(hargaSatuan.toString());
+            rincianItem = arrTeks.join(" + ") + " = " + formatRupiah(totalSub);
+        }
+
+        return { rincianText: rincianItem, subtotal: totalSub };
+    }
+
+    function kalkulasiHarga() {
+        let totalSemuaPenjualan = 0;
+        let teksOutput = "";
+
+        LIST_OBAT.forEach((item, index) => {
+            let chk = document.getElementById(`chk_${index}`);
+            if (chk && chk.checked) {
+                let qty = parseInt(document.getElementById(`qty_${index}`).value) || 1;
+                let kalkulasi = hitungDetailObat(item.nama, qty);
+                totalSemuaPenjualan += kalkulasi.subtotal;
+                teksOutput += `${item.nama} (${qty}x):\n${kalkulasi.rincianText}\n\n`;
+            }
+        });
+
+        if (teksOutput !== "") {
+            teksOutput += `=========================\nGRAND TOTAL: ${formatRupiah(totalSemuaPenjualan)}`;
+        }
+
+        document.getElementById("harga").value = teksOutput;
+        return { total: totalSemuaPenjualan, rincian: teksOutput };
+    }
+
+    function tambahData() {
+        let nama = document.getElementById("nama").value.trim();
+        let kelas = document.getElementById("kelas").value.trim();
+
+        let obatTerpilih = [];
+        LIST_OBAT.forEach((item, index) => {
+            let chk = document.getElementById(`chk_${index}`);
+            if (chk && chk.checked) {
+                let qty = parseInt(document.getElementById(`qty_${index}`).value) || 1;
+                let kalkulasi = hitungDetailObat(item.nama, qty);
+                
+                obatTerpilih.push({
+                    nama: item.nama,
+                    jumlah: qty,
+                    rincian: kalkulasi.rincianText,
+                    subtotal: kalkulasi.subtotal
+                });
+            }
+        });
+
+        if (nama === "" || kelas === "" || obatTerpilih.length === 0) {
+            alert("Silakan isi Nama, Kelas, dan centang minimal 1 Obat!");
+            return;
+        }
+
+        let totalTransaksi = obatTerpilih.reduce((sum, item) => sum + item.subtotal, 0);
+        let sekarang = new Date();
+        let tanggalFormatted = sekarang.toLocaleDateString("id-ID") + " " + sekarang.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+        dataPenjualan.push({
+            tanggal: tanggalFormatted,
+            nama: nama,
+            kelas: kelas,
+            daftarObat: obatTerpilih,
+            total: totalTransaksi
+        });
+
+        try { localStorage.setItem("dataPenjualanUKS", JSON.stringify(dataPenjualan)); } catch(e) {}
+
+        tampilkanData();
+        document.getElementById("nama").value = "";
+        document.getElementById("kelas").value = "";
+        document.getElementById("harga").value = "";
+        generateDaftarObat();
+    }
+
+    function tampilkanData() {
+        let tabel = document.getElementById("tabelData");
+        tabel.innerHTML = "";
+        let totalSemua = 0;
+
+        dataPenjualan.forEach(function(data, index) {
+            totalSemua += data.total;
+            let teksObat = data.daftarObat ? data.daftarObat.map(o => `${o.nama} (${o.jumlah})`).join("<br>") : "-";
+            let teksRincian = data.daftarObat ? data.daftarObat.map(o => `<b>${o.nama}:</b> ${o.rincian}`).join("<br>") : "-";
+
+            let baris = `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${data.tanggal || "-"}</td>
+                    <td>${data.nama}</td>
+                    <td>${data.kelas}</td>
+                    <td>${teksObat}</td>
+                    <td class="rincian-text">${teksRincian}</td>
+                    <td><b>${formatRupiah(data.total)}</b></td>
+                </tr>
+            `;
+            tabel.innerHTML += baris;
+        });
+
+        document.getElementById("totalSemua").innerText = formatRupiah(totalSemua);
+    }
+
+    function hapusData() {
+        if (confirm("Yakin ingin menghapus semua data?")) {
+            dataPenjualan = [];
+            try { localStorage.removeItem("dataPenjualanUKS"); } catch(e) {}
+            tampilkanData();
+        }
+    }
+
+    function eksporPNG() {
+        if (dataPenjualan.length === 0) {
+            alert("Belum ada data penjualan untuk diekspor!");
+            return;
+        }
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const padding = 30;
+        const width = 900;
+
+        let totalLines = 0;
+        dataPenjualan.forEach(d => { totalLines += d.daftarObat ? d.daftarObat.length : 1; });
+
+        const height = 110 + 60 + (dataPenjualan.length * 30) + (totalLines * 22) + 80;
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = "#c62828";
+        ctx.font = "bold 22px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("🏥 LAPORAN REKAPITULASI PENJUALAN OBAT UKS", width / 2, 45);
+
+        ctx.fillStyle = "#555555";
+        ctx.font = "13px Arial";
+        ctx.fillText("Waktu Ekspor: " + new Date().toLocaleString("id-ID"), width / 2, 70);
+
+        const startY = 100;
+        const cols = [
+            { title: "No", x: 40 },
+            { title: "Tanggal", x: 80 },
+            { title: "Pembeli", x: 220 },
+            { title: "Kelas", x: 340 },
+            { title: "Obat & Qty", x: 430 },
+            { title: "Rincian Harga", x: 590 },
+            { title: "Total", x: 770 }
+        ];
+
+        ctx.fillStyle = "#c62828";
+        ctx.fillRect(padding, startY, width - (padding * 2), 35);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 13px Arial";
+        ctx.textAlign = "left";
+        cols.forEach(c => ctx.fillText(c.title, c.x, startY + 22));
+
+        let currentY = startY + 35;
+        let totalSemua = 0;
+        ctx.font = "12px Arial";
+
+        dataPenjualan.forEach((data, index) => {
+            totalSemua += data.total;
+            let obatList = data.daftarObat || [{ nama: "-", jumlah: 1, rincian: "-" }];
+            let entryHeight = Math.max(35, obatList.length * 22 + 10);
+
+            if (index % 2 === 1) {
+                ctx.fillStyle = "#f9f9f9";
+                ctx.fillRect(padding, currentY, width - (padding * 2), entryHeight);
+            }
+
+            ctx.strokeStyle = "#dddddd";
+            ctx.beginPath();
+            ctx.moveTo(padding, currentY + entryHeight);
+            ctx.lineTo(width - padding, currentY + entryHeight);
+            ctx.stroke();
+
+            ctx.fillStyle = "#333333";
+            ctx.fillText((index + 1).toString(), cols[0].x, currentY + 22);
+            ctx.fillText(data.tanggal || "-", cols[1].x, currentY + 22);
+            ctx.fillText(data.nama, cols[2].x, currentY + 22);
+            ctx.fillText(data.kelas, cols[3].x, currentY + 22);
+
+            obatList.forEach((o, i) => {
+                let subY = currentY + 22 + (i * 20);
+                ctx.fillText(`${o.nama} (${o.jumlah})`, cols[4].x, subY);
+                ctx.fillText(`${o.rincian}`, cols[5].x, subY);
+            });
+
+            ctx.font = "bold 12px Arial";
+            ctx.fillText(formatRupiah(data.total), cols[6].x, currentY + 22);
+            ctx.font = "12px Arial";
+
+            currentY += entryHeight;
+        });
+
+        currentY += 20;
+        ctx.fillStyle = "#c62828";
+        ctx.fillRect(width - padding - 280, currentY, 280, 40);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 15px Arial";
+        ctx.textAlign = "right";
+        ctx.fillText(`TOTAL SEMUA: ${formatRupiah(totalSemua)}`, width - padding - 15, currentY + 25);
+
+        const imageURI = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = imageURI;
+        link.download = `Laporan_Penjualan_UKS_${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+</body>
+  </html>
